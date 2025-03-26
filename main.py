@@ -23,6 +23,16 @@ def count_words_and_sentences(file_path):
             # Підраховуємо кількість речень (кожне розділення додає 1 речення)
             sentence_count = len(sentences)
 
+            # Крок 2: Підрахунок слів
+            # Символи-розділювачі: ",", "пробіл", ".", "..."
+            # Замінюємо "..." на пробіл, щоб не враховувати його як частину слова
+            content_for_words = content.replace("...", " ")
+            # Розділяємо текст за розділювачами: пробіл, кома, крапка
+            # Використаємо регулярний вираз для розділення
+            word_separators = r'[,\s.]+'
+            words = [word for word in re.split(word_separators, content_for_words) if word]
+            word_count = len(words)
+
             return sentence_count
 
     except FileNotFoundError:
