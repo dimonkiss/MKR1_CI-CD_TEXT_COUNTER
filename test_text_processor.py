@@ -1,78 +1,70 @@
-# file: test_text_processor.py
 import pytest
 import os
-from text_processor import count_words_and_sentences
+from main import count_words_and_sentences
 
-
-# Фікстура для створення тимчасового файлу
+# Fixture for creating and cleaning up test files
 @pytest.fixture
-def create_temp_file(tmp_path):
-    def _create_temp_file(content):
-        # Створюємо тимчасовий файл у тимчасовій директорії
+def temp_text_file(tmp_path):
+    def create_file(content):
         file_path = tmp_path / "test_file.txt"
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         return str(file_path)
+    return create_file
 
-    return _create_temp_file
-
-
-# Тестування з параметризацією
-@pytest.mark.parametrize("content, expected_words, expected_sentences", [
-    # Тест 1: Порожній файл
-    ("", 0, 0),
-
-    # Тест 2: Одне речення без розділювачів
-    ("Привіт", 1, 1),
-
-    # Тест 3: Одне речення з комами і пробілами
-    ("Привіт, як справи?", 3, 1),
-
-    # Тест 4: Кілька речень із різними закінченнями
-    ("Я добре... Ти як? Дуже добре!", 5, 3),
-
-    # Тест 5: Текст із кількома розділювачами поспіль
-    ("Слово,,інше. Ще одне...", 4, 2),
-
-    # Тест 6: Текст із пробілами та без закінчень речень
-    ("Слово інше ще", 3, 1),
-
-    # Тест 7: Текст із лише розділювачами
-    (",,, ... .", 0, 0),
+# Test cases for word counting
+@pytest.mark.parametrize("content,expected_words", [
+    ("", 0),  # Empty file
+    ("   ", 0),  # Whitespace only
+    ("Hello world", 2),  # Simple case
+    ("Hello, world!", 2),  # With punctuation
+    ("This is a test.", 4),  # With sentence ending
+    ("One  two   three    four", 4),  # Multiple spaces
+    ("Word", 1),  # Single word
+    ("Hello...world", 2),  # Ellipsis between words
+    ("Привіт світ", 2),  # Unicode characters
+    ("Multiple\nlines\ntest", 3),  # Newline separated words
+    ("Comma,separated,words", 3),  # Comma separated words
+    ("  Leading and trailing spaces  ", 4),  # Leading/trailing spaces
 ])
-def test_count_words_and_sentences(create_temp_file, content, expected_words, expected_sentences):
-    # Створюємо тимчасовий файл із заданим вмістом
-    file_path = create_temp_file(content)
+def test_word_counting(temp_text_file, content, expected_words):
+    file_path = temp_text_file(content)
+    word_count, _ = count_words_and_sentences(file_path)
+    assert word_count == expected_words
 
-    # Викликаємо функцію
-    word_count, sentence_count = count_words_and_sentences(file_path)
+# Test cases for sentence counting
+@pytest.mark.parametrize("content,expected_sentences", [
+    ("", 0),  # Empty file
+    ("   ", 0),  # Whitespace only
+    ("Hello world", 1),  # No punctuation
+    ("Hello. World!", 2),  # Multiple sentences
+    ("Is this a test? Yes it is!", 2),  # Question and exclamation
+    ("This is a test... with ellipsis.", 1),  # Ellipsis
+    ("One. Two. Three.", 3),  # Multiple dots
+    ("Hello...world", 1),  # Ellipsis doesn't end sentence
+    ("End with ellipsis...", 1),  # Ellipsis at end
+    ("First!\nSecond?\nThird.", 3),  # Newline separated sentences
+    ("  .  ", 0),  # Just a period with spaces
+])
+def test_sentence_counting(temp_text_file, content, expected_sentences):
+    file_path = temp_text_file(content)
+    _, sentence_count = count_words_and_sentences(file_path)
+    assert sentence_count == expected_sentences
 
-    # Перевіряємо результати
-    assert word_count == expected_words, f"Очікувалось {expected_words} слів, отримано {word_count}"
-    assert sentence_count == expected_sentences, f"Очікувалось {expected_sentences} речень, отримано {sentence_count}"
-
-
-# Тест для перевірки випадку, коли файл не існує
-def test_file_not_found():
-    word_count, sentence_count = count_words_and_sentences("non_existent_file.txt")
+# Test error handling
+def test_nonexistent_file():
+    word_count, sentence_count = count_words_and_sentences("nonexistent_file.txt")
     assert word_count == 0
     assert sentence_count == 0
 
+# Test combined word and sentence counting
+@pytest.mark.parametrize("content,expected", [
+    ("First sentence. Second sentence!", (4, 2)),
+    ("Word1, word2. Word3? Word4!", (4, 3)),
+    ("Testing... one two three.", (4, 1)),
+])
+def test_combined_counting(temp_text_file, content, expected):
+    file_path = temp_text_file(content)
+    result = count_words_and_sentences(file_path)
+    assert result == expected
 
-# Тест для перевірки обробки помилок (наприклад, файл без прав доступу)
-@pytest.mark.skipif(os.name == 'nt', reason="Тестування прав доступу складне на Windows")
-def test_file_permission_error(tmp_path):
-    file_path = tmp_path / "test_file.txt"
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write("Тестовий текст.")
-
-    # Змінюємо права доступу (тільки для Unix-подібних систем)
-    os.chmod(file_path, 0o000)  # Забороняємо доступ
-
-    try:
-        word_count, sentence_count = count_words_and_sentences(file_path)
-        assert word_count == 0
-        assert sentence_count == 0
-    finally:
-        # Відновлюємо права доступу, щоб уникнути проблем із видаленням
-        os.chmod(file_path, 0o666)

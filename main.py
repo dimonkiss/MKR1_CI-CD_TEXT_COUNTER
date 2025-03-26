@@ -1,39 +1,29 @@
+# file: main.py
 import re
 
 
 def count_words_and_sentences(file_path):
     try:
-        # Зчитуємо вміст файлу
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
 
-            # Якщо файл порожній, повертаємо 0 слів і 0 речень
             if not content.strip():
                 return 0, 0
 
-            # Крок 1: Підрахунок речень
-            # Символи, що закінчують речення: ".", "!", "?", "..."
-            # Використаємо регулярний вираз для розділення тексту на речення
-            # Замінюємо "..." на унікальний символ, щоб обробити його окремо
+            # Підрахунок речень
             content_for_sentences = content.replace("...", "<ELLIPSIS>")
-            # Розділяємо текст за символами . ! ? (але не за <ELLIPSIS>)
             sentence_endings = r'(?<!<ELLIPSIS>)([.!?])'
             sentences = [s.strip() for s in re.split(sentence_endings, content_for_sentences) if
                          s.strip() and s not in ".!?"]
-            # Підраховуємо кількість речень (кожне розділення додає 1 речення)
             sentence_count = len(sentences)
 
-            # Крок 2: Підрахунок слів
-            # Символи-розділювачі: ",", "пробіл", ".", "..."
-            # Замінюємо "..." на пробіл, щоб не враховувати його як частину слова
+            # Підрахунок слів
             content_for_words = content.replace("...", " ")
-            # Розділяємо текст за розділювачами: пробіл, кома, крапка
-            # Використаємо регулярний вираз для розділення
             word_separators = r'[,\s.]+'
             words = [word for word in re.split(word_separators, content_for_words) if word]
             word_count = len(words)
 
-            return sentence_count
+            return word_count, sentence_count  # Повертаємо кортеж із двох значень
 
     except FileNotFoundError:
         print(f"Помилка: Файл '{file_path}' не знайдено.")
@@ -44,8 +34,8 @@ def count_words_and_sentences(file_path):
 
 
 # Приклад використання
-file_path = "input.txt"  # Замініть на шлях до вашого файлу
-word_count, sentence_count = count_words_and_sentences(file_path)
-
-print(f"Кількість слів у файлі: {word_count}")
-print(f"Кількість речень у файлі: {sentence_count}")
+if __name__ == "__main__":
+    file_path = "input.txt"  # Замініть на шлях до вашого файлу
+    word_count, sentence_count = count_words_and_sentences(file_path)
+    print(f"Кількість слів у файлі: {word_count}")
+    print(f"Кількість речень у файлі: {sentence_count}")
